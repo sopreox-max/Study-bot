@@ -12,15 +12,18 @@ from telegram.ext import (
 from google import genai
 
 
+# قراءة المفاتيح من Environment Variables
 TOKEN = os.environ["TOKEN"]
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
 
+# الاتصال بـ Gemini
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "مرحباً، أنا مساعدك الدراسي الذكي 📚"
+        "مرحباً، أنا مساعدك الدراسي الذكي 📚\n"
+        "أرسل لي سؤالك وسأساعدك."
     )
 
 
@@ -43,18 +46,31 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
 {user_text}
 """
 
-    response = client.models.generate_content(
-        model="gemini-3.7-flash",
-        contents=prompt
-    )
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.7-flash",
+            contents=prompt
+        )
 
-    await update.message.reply_text(response.text)
+        await update.message.reply_text(response.text)
+
+    except Exception as e:
+        print(f"Gemini error: {e}")
+
+        await update.message.reply_text(
+            "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. حاول مرة أخرى."
+        )
 
 
+# إنشاء تطبيق Telegram
 app = Application.builder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("start", start))
+# أمر /start
+app.add_handler(
+    CommandHandler("start", start)
+)
 
+# استقبال رسائل المستخدم
 app.add_handler(
     MessageHandler(
         filters.TEXT & ~filters.COMMAND,
@@ -63,11 +79,5 @@ app.add_handler(
 )
 
 
-PORT = int(os.environ.get("PORT", 10000))
-WEBHOOK_URL = os.environ["WEBHOOK_URL"]
-
-app.run_webhook(
-    listen="0.0.0.0",
-    port=PORT,
-    webhook_url=WEBHOOK_URL
-)app.run_polling()
+# تشغيل البوت
+app.run_polling()
